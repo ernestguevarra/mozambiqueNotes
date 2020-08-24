@@ -1,0 +1,327 @@
+---
+title: \vspace{8cm} \LARGE{Notes on stage 1 sampling frames for a Simple Spatial Survey Method for a national survey in Mozambique}
+subtitle: ""
+author: "Ernest Guevarra"
+date: '`r format(Sys.Date(), "%d %B %Y")`'
+fontsize: 12pt
+geometry: margin=2cm
+documentclass: article
+classoption: a4paper
+bibliography: bibliography.bib
+link-citations: TRUE
+links-as-notes: FALSE
+colorlinks: TRUE
+linkcolor: blue
+citecolor: blue
+urlcolor: blue
+lot: false
+lof: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE)
+
+knitr::knit_hooks$set(document = function(x) {
+  sub('\\usepackage[]{color}', '\\usepackage{xcolor}', x, fixed = TRUE)
+  }
+)
+
+if(!require(rgdal)) install.packages("rgdal")
+if(!require(rgeos)) install.packages("rgeos")
+if(!require(raster)) install.packages("raster")
+if(!require(maps)) install.packages("maps")
+if(!require(knitr)) install.packages("knitr")
+if(!require(kableExtra)) install.packages("kableExtra")
+if(!require(magrittr)) install.packages("magrittr")
+if(!require(ggplot2)) install.packages("ggplot2")
+if(!require(ggmap)) install.packages("ggmap")
+if(!require(stringr)) install.packages("stringr")
+if(!require(remotes)) install.packages("remotes")
+if(!require(openxlsx)) install.packages("openxlsx")
+if(!require(RColorBrewer)) install.packages("RColorBrewer")
+
+if(!require(gadmr)) install_github("spatialworks/gadmr")
+if(!require(spatialsampler)) install_github("spatialworks/spatialsampler")
+if(!require(comoros)) install_github("spatialworks/mozambique")
+
+if(!require(drlib)) install_github("dgrtwo/drlib")
+
+themeSettings <- theme_bw() +
+  theme(panel.border = element_rect(colour = "gray50",
+                                    size = 0.5),
+        panel.grid.major = element_line(linetype = 1,
+                                        size = 0.1,
+                                        colour = "gray90"),
+        panel.grid.minor = element_line(linetype = 0),
+        strip.background = element_rect(colour = "gray50",
+                                        fill = "gray70"),
+        strip.text = element_text(colour = "white", size = 16),
+        legend.text = element_text(size = 16),
+        legend.key = element_rect(linetype = 0),
+        legend.key.size = unit(0.5, "cm"),
+        legend.position = "top",
+        axis.title = element_text(size = 16),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        axis.ticks = element_line(colour = "gray50", size = 0.5))
+```
+
+\newpage
+
+# Introduction
+
+This document explores possible stage 1 sampling frames for a national survey in Mozambique using the Simple Spatial Sampling Method.
+
+# Stage 1 sampling grid
+
+Given a boundary map of Mozambique that includes borders at the *provincias* level (administrative level 1) and point locations of villages throughout the country, various stage 1 sampling grids using `d` values from 10 to 15 kms were tested.
+
+## Estimating sampling points based on area size
+
+The number of sampling points needed for the stage 1 sampling frame can be estimated using the total area size of the survey area and dividing this by the area size of the hexagonal grid based on a specified value of `d`.
+
+Given a specific `d` value, the area size of the hexagonal grid can be calculated as follows:
+
+$$ \text{hexagon area size} ~ = ~ \frac{3 \times \sqrt{3}}{2} ~ d ^ 2  $$
+
+Mozambique has a total area size of $801590 ~ \text{km} ^ 2$. The estimated number of sampling points for a national survey in Mozambique using simple spatial sampling method is estimated by:
+
+$$ n_\text{estimated total sampling points} ~ = ~ \frac{\text{Total area size of Mozambique}}{\text{Hexagon area size}} ~ = ~ \frac{801590 ~ \text{km} ^ 2}{\frac{3 \times \sqrt{3}}{2} ~ d ^ 2} $$
+
+The hexagon area sizes for `d` values from 10 to 15 kms are and the corresponding number of sampling points required are shown in the table below:
+
+```{r calc, echo = FALSE, eval = TRUE}
+library(spatialsampler)
+library(mozambique)
+
+d <- 10:15
+hexArea <- lapply(X = 10:15, FUN = function(x) calculate_area(x, digits = 2)$hex) %>%
+  simplify2array()
+nSP <- lapply(hexArea, FUN = function(x) ceiling(801590 / x)) %>%
+  simplify2array()
+
+tab <- data.frame(d, hexArea, nSP)
+
+kable(x = tab,
+      booktabs = TRUE,
+      caption = "Hexagonal grid area sizes for d values from 10 to 15 kms",
+      col.names = linebreak(c("d", 
+                              "Hexagon\narea\nsize", 
+                              "Number\nof\nsampling\npoints"), 
+                            align = "c"),
+      escape = FALSE,
+      format = "latex") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"))
+```
+
+The preceding calculations assume that the villages within Mozambique are spread througout the whole land area of the country. However, as shown in the map below, there are areas within the country with no settlements
+
+```{r settlementsPlot, echo = FALSE, eval = TRUE, fig.cap = "Map of Mozambique provinces with settlements", fig.align = "center", fig.width = 12, fig.height = 12, fig.pos = "H"}
+plot(provincias, lwd = 1)
+plot(settlements, pch = 16, cex = 0.3, col = "blue", add = TRUE)
+plot(country, lwd = 3, add = TRUE)
+```
+
+The implication is that this estimation approach tends to overestimate the total number of sampling points needed. From a planning perspective, this can be acceptable particularly if appropriate maps for use in stage 1 sampling are still being secured. This approach provides a safe estimate to use for planning as resources will be organised based on a higher number of sampling points for the stage 1 sampling frame and eventually can be adjusted down (if needed) once a map-based determination has been performed (as described below).
+
+## Determining number of sampling points using maps
+
+Once maps are available, number of sampling points can be determined based on the simple spatial sampling method approach to stage 1 sampling.
+
+The various stage 1 sampling frames for values of `d` from 10 to 15 kms including respective stage 1 sampling maps are shown below.
+
+```{r stage1grid, echo = FALSE, eval = TRUE, cache = TRUE}
+## d = 10
+mozPoints10 <- create_sp_grid(x = country,
+                          d = 10,
+                          buffer = 20,
+                          country = "Mozambique")
+
+mozGrid10 <- sp::HexPoints2SpatialPolygons(mozPoints10)
+
+mozSP10 <- get_nearest_point(data = data.frame(settlements@coords), 
+                             data.x = "coords.x1", data.y = "coords.x2",
+                             query = mozPoints10)
+
+## d = 11
+mozPoints11 <- create_sp_grid(x = country,
+                          d = 11,
+                          buffer = 20,
+                          country = "Mozambique")
+
+mozGrid11 <- sp::HexPoints2SpatialPolygons(mozPoints11)
+
+mozSP11 <- get_nearest_point(data = data.frame(settlements@coords), 
+                             data.x = "coords.x1", data.y = "coords.x2",
+                             query = mozPoints11)
+
+## d = 12
+mozPoints12 <- create_sp_grid(x = country,
+                          d = 12,
+                          buffer = 20,
+                          country = "Mozambique")
+
+mozGrid12 <- sp::HexPoints2SpatialPolygons(mozPoints12)
+
+mozSP12 <- get_nearest_point(data = data.frame(settlements@coords), 
+                             data.x = "coords.x1", data.y = "coords.x2",
+                             query = mozPoints12)
+
+## d = 13
+mozPoints13 <- create_sp_grid(x = country,
+                          d = 13,
+                          buffer = 20,
+                          country = "Mozambique")
+
+mozGrid13 <- sp::HexPoints2SpatialPolygons(mozPoints13)
+
+mozSP13 <- get_nearest_point(data = data.frame(settlements@coords), 
+                             data.x = "coords.x1", data.y = "coords.x2",
+                             query = mozPoints13)
+
+## d = 14
+mozPoints14 <- create_sp_grid(x = country,
+                          d = 14,
+                          buffer = 20,
+                          country = "Mozambique")
+
+mozGrid14 <- sp::HexPoints2SpatialPolygons(mozPoints14)
+
+mozSP14 <- get_nearest_point(data = data.frame(settlements@coords), 
+                             data.x = "coords.x1", data.y = "coords.x2",
+                             query = mozPoints14)
+
+## d = 15
+mozPoints15 <- create_sp_grid(x = country,
+                          d = 15,
+                          buffer = 20,
+                          country = "Mozambique")
+
+mozGrid15 <- sp::HexPoints2SpatialPolygons(mozPoints15)
+
+mozSP15 <- get_nearest_point(data = data.frame(settlements@coords), 
+                             data.x = "coords.x1", data.y = "coords.x2",
+                             query = mozPoints15)
+```
+
+
+```{r stage1table, echo = FALSE, eval = TRUE}
+d <- 10:15
+
+nClusters <- lapply(paste("nrow(mozSP", 10:15, ")", sep = ""),
+              FUN = function(x) parse(text = x)) %>%
+  simplify2array() %>%
+  lapply(FUN = eval) %>%
+  simplify2array()
+
+tab <- data.frame(d, nSP, nClusters)
+
+kable(x = tab,
+      booktabs = TRUE,
+      caption = "Stage 1 sample characteristics of various d values",
+      col.names = linebreak(c("d", "Number\nof\nsampling\npoints", 
+                              "Number\nof\nclusters/\nsettlements\nselected"), 
+                            align = "c"),
+      escape = FALSE,
+      format = "latex") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"))
+```
+
+
+```{r stage1plot10, echo = FALSE, eval = TRUE, fig.cap = "Stage 1 sampling map for d of 10 kms", fig.align = "center", fig.pos = "H", fig.width = 12, fig.height = 12}
+plot(provincias, lwd = 1)
+plot(country, lwd = 2, add = TRUE)
+#plot(mozPoints10, pch = 16, cex = 0.5, col = "red", add = TRUE)
+plot(settlements, pch = 16, cex = 0.2, col = "blue", add = TRUE)
+points(mozSP10[ , c("coords.x1", "coords.x2")], pch = 1, cex = 0.3, col = "red")
+legend(x = "bottomright",
+       y.intersp = 1.2,
+       legend = c("Settlements", "Sampling Points"),
+       cex = 2,
+       bty = "n",
+       pch = c(16, 1),
+       pt.cex = 2,
+       col = c("blue", "red"))
+```
+
+```{r stage1plot11, echo = FALSE, eval = TRUE, fig.cap = "Stage 1 sampling map for d of 11 kms", fig.align = "center", fig.pos = "H", fig.width = 12, fig.height = 12}
+plot(provincias, lwd = 1)
+plot(country, lwd = 2, add = TRUE)
+#plot(mozPoints11, pch = 16, cex = 0.5, col = "red", add = TRUE)
+plot(settlements, pch = 16, cex = 0.2, col = "blue", add = TRUE)
+points(mozSP11[ , c("coords.x1", "coords.x2")], pch = 1, cex = 0.3, col = "red")
+legend(x = "bottomright",
+       y.intersp = 1.2,
+       legend = c("Settlements", "Sampling Points"),
+       cex = 2,
+       bty = "n",
+       pch = c(16, 1),
+       pt.cex = 2,
+       col = c("blue", "red"))
+```
+
+```{r stage1plot12, echo = FALSE, eval = TRUE, fig.cap = "Stage 1 sampling map for d of 12 kms", fig.align = "center", fig.pos = "H", fig.width = 12, fig.height = 12}
+plot(provincias, lwd = 1)
+plot(country, lwd = 2, add = TRUE)
+#plot(mozPoints12, pch = 16, cex = 0.5, col = "red", add = TRUE)
+plot(settlements, pch = 16, cex = 0.2, col = "blue", add = TRUE)
+points(mozSP12[ , c("coords.x1", "coords.x2")], pch = 1, cex = 0.3, col = "red")
+legend(x = "bottomright",
+       y.intersp = 1.2,
+       legend = c("Settlements", "Sampling Points"),
+       cex = 2,
+       bty = "n",
+       pch = c(16, 1),
+       pt.cex = 2,
+       col = c("blue", "red"))
+```
+
+```{r stage1plot13, echo = FALSE, eval = TRUE, fig.cap = "Stage 1 sampling map for d of 13 kms", fig.align = "center", fig.pos = "H", fig.width = 12, fig.height = 12}
+plot(provincias, lwd = 1)
+plot(country, lwd = 2, add = TRUE)
+#plot(mozPoints13, pch = 16, cex = 0.5, col = "red", add = TRUE)
+plot(settlements, pch = 16, cex = 0.2, col = "blue", add = TRUE)
+points(mozSP13[ , c("coords.x1", "coords.x2")], pch = 1, cex = 0.3, col = "red")
+legend(x = "bottomright",
+       y.intersp = 1.2,
+       legend = c("Settlements", "Sampling Points"),
+       cex = 2,
+       bty = "n",
+       pch = c(16, 1),
+       pt.cex = 2,
+       col = c("blue", "red"))
+```
+
+```{r stage1plot14, echo = FALSE, eval = TRUE, fig.cap = "Stage 1 sampling map for d of 14 kms", fig.align = "center", fig.pos = "H", fig.width = 12, fig.height = 12}
+plot(provincias, lwd = 1)
+plot(country, lwd = 2, add = TRUE)
+#plot(mozPoints14, pch = 16, cex = 0.5, col = "red", add = TRUE)
+plot(settlements, pch = 16, cex = 0.2, col = "blue", add = TRUE)
+points(mozSP14[ , c("coords.x1", "coords.x2")], pch = 1, cex = 0.3, col = "red")
+legend(x = "bottomright",
+       y.intersp = 1.2,
+       legend = c("Settlements", "Sampling Points"),
+       cex = 2,
+       bty = "n",
+       pch = c(16, 1),
+       pt.cex = 2,
+       col = c("blue", "red"))
+```
+
+```{r stage1plot15, echo = FALSE, eval = TRUE, fig.cap = "Stage 1 sampling map for d of 15 kms", fig.align = "center", fig.pos = "H", fig.width = 12, fig.height = 12}
+plot(provincias, lwd = 1)
+plot(country, lwd = 2, add = TRUE)
+#plot(mozPoints15, pch = 16, cex = 0.5, col = "red", add = TRUE)
+plot(settlements, pch = 16, cex = 0.2, col = "blue", add = TRUE)
+points(mozSP15[ , c("coords.x1", "coords.x2")], pch = 1, cex = 0.3, col = "red")
+legend(x = "bottomright",
+       y.intersp = 1.2,
+       legend = c("Settlements", "Sampling Points"),
+       cex = 2,
+       bty = "n",
+       pch = c(16, 1),
+       pt.cex = 2,
+       col = c("blue", "red"))
+```
