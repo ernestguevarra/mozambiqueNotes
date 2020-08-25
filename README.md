@@ -3,6 +3,7 @@
 <!-- badges: start -->
 ![version](https://img.shields.io/badge/version-0.1.0-blue.svg)
 ![license](https://mirrors.creativecommons.org/presskit/buttons/80x15/svg/by-nc-sa.svg)
+[![DOI](https://zenodo.org/badge/289866526.svg)](https://zenodo.org/badge/latestdoi/289866526)
 <!-- badges: end -->
 
 These notes explore possible stage 1 sampling frames for a national survey in Mozambique using the Simple Spatial Sampling Method (S3M).
