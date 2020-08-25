@@ -31,22 +31,14 @@ knitr::knit_hooks$set(document = function(x) {
 if(!require(rgdal)) install.packages("rgdal")
 if(!require(rgeos)) install.packages("rgeos")
 if(!require(raster)) install.packages("raster")
-if(!require(maps)) install.packages("maps")
 if(!require(knitr)) install.packages("knitr")
 if(!require(kableExtra)) install.packages("kableExtra")
-if(!require(magrittr)) install.packages("magrittr")
 if(!require(ggplot2)) install.packages("ggplot2")
-if(!require(ggmap)) install.packages("ggmap")
-if(!require(stringr)) install.packages("stringr")
+if(!require(magrittr)) install.packages("magrittr")
 if(!require(remotes)) install.packages("remotes")
-if(!require(openxlsx)) install.packages("openxlsx")
-if(!require(RColorBrewer)) install.packages("RColorBrewer")
 
-if(!require(gadmr)) install_github("spatialworks/gadmr")
 if(!require(spatialsampler)) install_github("spatialworks/spatialsampler")
 if(!require(comoros)) install_github("spatialworks/mozambique")
-
-if(!require(drlib)) install_github("dgrtwo/drlib")
 
 themeSettings <- theme_bw() +
   theme(panel.border = element_rect(colour = "gray50",
