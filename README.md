@@ -9,6 +9,7 @@
 These notes explore possible stage 1 sampling frames for a national survey in Mozambique using the Simple Spatial Sampling Method (S3M).
 
 [View document (PDF)](https://github.com/ernestguevarra/mozambiqueNotes/blob/master/mozambiqueNotes.pdf)
+[Download document (PDF)](https://github.com/ernestguevarra/mozambiqueNotes/raw/master/mozambiqueNotes.pdf)
 
 ## Author
 [Ernest Guevarra](https://ernest.guevarra.io)
