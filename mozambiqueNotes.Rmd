@@ -1,5 +1,5 @@
 ---
-title: \vspace{8cm} \LARGE{Notes on stage 1 sampling frames for a Simple Spatial Survey Method for a national survey in Mozambique}
+title: \vspace{8cm} Notes on stage 1 sampling frames for a national Simple Spatial Survey Method survey in Mozambique
 subtitle: ""
 author: "Ernest Guevarra"
 date: '`r format(Sys.Date(), "%d %B %Y")`'
@@ -229,6 +229,7 @@ kable(x = tab,
   kable_styling(latex_options = c("striped", "HOLD_position"))
 ```
 
+As was expected, the number of sampling points based on actual maps are less than the estimated sampling points. The following maps show the selected settlements for sampling at various values for `d`.
 
 ```{r stage1plot10, echo = FALSE, eval = TRUE, fig.cap = "Stage 1 sampling map for d of 10 kms", fig.align = "center", fig.pos = "H", fig.width = 12, fig.height = 12}
 plot(provincias, lwd = 1)
