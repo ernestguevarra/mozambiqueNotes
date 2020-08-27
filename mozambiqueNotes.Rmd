@@ -126,7 +126,7 @@ Once maps are available, number of sampling points can be determined based on th
 
 The various stage 1 sampling frames for values of `d` from 10 to 15 kms including respective stage 1 sampling maps are shown below.
 
-```{r stage1grid, echo = FALSE, eval = TRUE, cache = TRUE}
+```{r stage1grid, echo = FALSE, eval = TRUE}
 ## d = 10
 mozPoints10 <- create_sp_grid(x = country,
                           d = 10,
