@@ -2,7 +2,7 @@
 
 <!-- badges: start -->
 ![license](https://mirrors.creativecommons.org/presskit/buttons/80x15/svg/by-nc-sa.svg)
-![version](https://img.shields.io/badge/version-0.1.0-blue.svg)
+![version](https://img.shields.io/badge/version-0.1.1-blue.svg)
 [![DOI](https://zenodo.org/badge/289866526.svg)](https://zenodo.org/badge/latestdoi/289866526)
 <!-- badges: end -->
 

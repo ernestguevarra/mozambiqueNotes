@@ -38,7 +38,9 @@ if(!require(magrittr)) install.packages("magrittr")
 if(!require(remotes)) install.packages("remotes")
 
 if(!require(spatialsampler)) install_github("spatialworks/spatialsampler")
-if(!require(comoros)) install_github("spatialworks/mozambique")
+if(!require(mozambique)) install_github("spatialworks/mozambique")
+
+if(!require(drlib)) install_github("dgrtwo/drlib")
 
 themeSettings <- theme_bw() +
   theme(panel.border = element_rect(colour = "gray50",
@@ -124,7 +126,7 @@ Once maps are available, number of sampling points can be determined based on th
 
 The various stage 1 sampling frames for values of `d` from 10 to 15 kms including respective stage 1 sampling maps are shown below.
 
-```{r stage1grid, echo = FALSE, eval = TRUE, cache = TRUE}
+```{r stage1grid, echo = FALSE, eval = TRUE}
 ## d = 10
 mozPoints10 <- create_sp_grid(x = country,
                           d = 10,
@@ -309,6 +311,143 @@ plot(country, lwd = 2, add = TRUE)
 #plot(mozPoints15, pch = 16, cex = 0.5, col = "red", add = TRUE)
 plot(settlements, pch = 16, cex = 0.2, col = "blue", add = TRUE)
 points(mozSP15[ , c("coords.x1", "coords.x2")], pch = 1, cex = 0.3, col = "red")
+legend(x = "bottomright",
+       y.intersp = 1.2,
+       legend = c("Settlements", "Sampling Points"),
+       cex = 2,
+       bty = "n",
+       pch = c(16, 1),
+       pt.cex = 2,
+       col = c("blue", "red"))
+```
+
+## Determining d using 'half the distance between markets' approach
+
+Another possible approach to the determination of an appropriate value for `d` is the 'half the distance between markets'. This method is described in the FANTA SQUEAC Technical Reference [@Myatt:2012tta]. In this approach, the value of `d` is approximated by the distance carers are willing to walk/travel to access services. A proxy for this would be the half the average distance of villages to the nearest market.
+
+Using the locations of settlements, and the locations of major towns and cities in Mozambique, half the average distance to markets can be estimated as follows:
+
+```{r halfdist1, echo = TRUE, eval = TRUE}
+library(mozambique)
+library(tripack)
+library(geosphere)
+
+## location data for major towns and cities
+townsCities <- subset(ppl, place %in% c("town", "city"))
+
+## Get distance between towns and cities
+distTownsCities <- distm(x = townsCities)
+
+## Craete a triangular irregular network between towns and cities via 
+## Delaunay triangulation
+triTownsCities <- tri.mesh(x = townsCities@coords[ , 1],
+                           y = townsCities@coords[ , 2])
+
+## Get network of towns and cities
+nbTownsCities <- neighbours(triTownsCities)
+
+## Get vector of distances in network of towns and cities
+listDistances <- NULL
+
+for(i in seq_len(length(nbTownsCities))) {
+  x <- NULL
+  for(j in nbTownsCities[[i]]) {
+    x <- c(x, distTownsCities[i, j])
+  }
+  listDistances <- c(listDistances, x)
+}
+
+## Convert distances to kms 
+listDistances <- listDistances / 1000
+
+## Get half of median distance
+median(listDistances) / 2
+
+## Get half of the mean distance
+mean(listDistances) / 2
+```
+
+In the calculations above, we use both median and mean. The half of the mean distance to markets is about **35 kms** while half the median distance to markets is about **23 kms**.
+
+In this case, median might be the more robust estimator as there are some long distances along the borders of the triangular network that connects extremely distant points on the network.
+
+If we use a `d` of 23 kms, we get the following stage 1 sampling frame:
+
+```{r halfdist2, echo = FALSE, eval = TRUE}
+## d = 23
+mozPoints23 <- create_sp_grid(x = country,
+                              d = 23,
+                              buffer = 20,
+                              country = "Mozambique")
+
+mozGrid23 <- sp::HexPoints2SpatialPolygons(mozPoints23)
+
+mozSP23 <- get_nearest_point(data = data.frame(settlements@coords), 
+                             data.x = "coords.x1", data.y = "coords.x2",
+                             query = mozPoints23)
+
+## d = 35
+mozPoints35 <- create_sp_grid(x = country,
+                              d = 35,
+                              buffer = 20,
+                              country = "Mozambique")
+
+mozGrid35 <- sp::HexPoints2SpatialPolygons(mozPoints35)
+
+mozSP35 <- get_nearest_point(data = data.frame(settlements@coords), 
+                             data.x = "coords.x1", data.y = "coords.x2",
+                             query = mozPoints35)
+```
+
+```{r halfdist3, echo = FALSE, eval = TRUE}
+d <- c(23, 35)
+
+hexArea <- lapply(X = d, FUN = function(x) calculate_area(x, digits = 2)$hex) %>%
+  simplify2array()
+nSP <- lapply(hexArea, FUN = function(x) ceiling(801590 / x)) %>%
+  simplify2array()
+
+nClusters <- lapply(paste("nrow(mozSP", c(23, 35), ")", sep = ""),
+              FUN = function(x) parse(text = x)) %>%
+  simplify2array() %>%
+  lapply(FUN = eval) %>%
+  simplify2array()
+
+tab <- data.frame(d, nSP, nClusters)
+
+kable(x = tab,
+      booktabs = TRUE,
+      caption = "Stage 1 sample characteristics for d values based on half distance between markets",
+      col.names = linebreak(c("d", "Number\nof\nsampling\npoints", 
+                              "Number\nof\nclusters/\nsettlements\nselected"), 
+                            align = "c"),
+      escape = FALSE,
+      format = "latex") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"))
+```
+
+```{r stage1plot23, echo = FALSE, eval = TRUE, fig.cap = "Stage 1 sampling map for d of 23 kms", fig.align = "center", fig.pos = "H", fig.width = 12, fig.height = 12}
+plot(provincias, lwd = 1)
+plot(country, lwd = 2, add = TRUE)
+#plot(mozPoints14, pch = 16, cex = 0.5, col = "red", add = TRUE)
+plot(settlements, pch = 16, cex = 0.2, col = "blue", add = TRUE)
+points(mozSP23[ , c("coords.x1", "coords.x2")], pch = 1, cex = 0.3, col = "red")
+legend(x = "bottomright",
+       y.intersp = 1.2,
+       legend = c("Settlements", "Sampling Points"),
+       cex = 2,
+       bty = "n",
+       pch = c(16, 1),
+       pt.cex = 2,
+       col = c("blue", "red"))
+```
+
+```{r stage1plot35, echo = FALSE, eval = TRUE, fig.cap = "Stage 1 sampling map for d of 35 kms", fig.align = "center", fig.pos = "H", fig.width = 12, fig.height = 12}
+plot(provincias, lwd = 1)
+plot(country, lwd = 2, add = TRUE)
+#plot(mozPoints15, pch = 16, cex = 0.5, col = "red", add = TRUE)
+plot(settlements, pch = 16, cex = 0.2, col = "blue", add = TRUE)
+points(mozSP35[ , c("coords.x1", "coords.x2")], pch = 1, cex = 0.3, col = "red")
 legend(x = "bottomright",
        y.intersp = 1.2,
        legend = c("Settlements", "Sampling Points"),
